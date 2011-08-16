@@ -99,7 +99,7 @@ class ${dao_clazz_name}DAO implements ${idao_clazz_name}DAO{
  	 * Delete all rows
  	 */
 	public function clean(){
-		$sql = 'UPDATE ${table_name} SET is_deleted = TRUE WHERE is_deleted = FALSE';
+		$sql = 'UPDATE ${table_name} SET is_deleted = TRUE, delete_epoch=unix_timestamp(now()) WHERE is_deleted = FALSE';
 		$sqlQuery = new SqlQuery($sql);
 		return $this->executeUpdate($sqlQuery);
 	}
