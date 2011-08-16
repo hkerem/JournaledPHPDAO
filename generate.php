@@ -16,8 +16,10 @@ function generate(){
 	getnerateDAOObjects($ret);
 	getnerateDAOExtObjects($ret);
 	getnerateIDAOObjects($ret);
+	getnerateRestControllers($ret);
 	createIncludeFile($ret);
 	createDAOFactory($ret);
+	createRestFacade($ret);
 }
 
 function init(){
@@ -29,6 +31,7 @@ function init(){
 	@mkdir("generated/class/sql");
 	@mkdir("generated/class/dao");
 	@mkdir("generated/class/core");
+	@mkdir("generated/class/rest");
 	copy('templates/class/dao/sql/Connection.class.php', 'generated/class/sql/Connection.class.php');
 	copy('templates/class/dao/sql/ConnectionFactory.class.php', 'generated/class/sql/ConnectionFactory.class.php');
 	copy('templates/class/dao/sql/ConnectionProperty.class.php', 'generated/class/sql/ConnectionProperty.class.php');
@@ -50,6 +53,7 @@ function createIncludeFile($ret){
 		$str .= "\trequire_once('class/dto/".getDTOName($clazzName).".class.php');\n";
 		$str .= "\trequire_once('class/mysql/".$clazzName."MySqlDAO.class.php');\n";
 		$str .= "\trequire_once('class/mysql/ext/".$clazzName."MySqlExtDAO.class.php');\n";
+		$str .= "\trequire_once('class/rest/".$clazzName."Controller.class.php');\n";
 	}
 	$template = new Template('templates/include_dao.tpl');
 	$template->set('include', $str);
@@ -84,6 +88,21 @@ function createDAOFactory($ret){
 	$template = new Template('templates/DAOFactory.tpl');
 	$template->set('content', $str);
 	$template->write('generated/class/dao/DAOFactory.class.php');
+}
+
+function createRestFacade($ret){
+	$str = "";
+	for($i=0;$i<count($ret);$i++){
+		if(!doesTableContainPK($ret[$i])){
+			continue;
+		}
+		$tableName = $ret[$i][0];
+		$clazzName = getClazzName($tableName);
+		$str .= "\t\t".'$restserver'."->addClass('$clazzName', 'dao');\n";
+	}
+	$template = new Template('templates/RestDAOFacade.tpl');
+	$template->set('content', $str);
+	$template->write('generated/class/dao/RestDAOFacade.class.php');
 }
 
 /**
@@ -195,6 +214,128 @@ function getnerateDAOExtObjects($ret){
 	}
 }
 
+// TODO: There are lots of redundant lines, should be cleaned
+function getnerateRestControllers($ret){
+	for($i=0;$i<count($ret);$i++){
+		if(!doesTableContainPK($ret[$i])){
+			continue;
+		}
+		$tableName = $ret[$i][0];
+		$clazzName = getClazzName($tableName).'MySql';
+
+		$tab = getFields($tableName);
+		$parameterSetter = "\n";
+		$insertFields = "";
+		$updateFields = "";
+		$questionMarks = "";
+		$readRow = "\n";
+		$pk = '';
+		$pks = array();
+		$queryByField = '';
+		$deleteByField = '';
+		$pk_type='';
+		for($j=0;$j<count($tab);$j++){
+			if($tab[$j][3]=='PRI' || $tab[$j][0]=='id'){
+				$pk = $tab[$j][0];
+				$c = count($pks);
+				$pks[$c] = $tab[$j][0];
+				$pk_type = $tab[$j][1];
+			}else{
+				$insertFields .= $tab[$j][0].", ";
+				$updateFields .= $tab[$j][0]." = ?, ";
+				$questionMarks .= "?, ";
+				if(isColumnTypeNumber($tab[$j][1])){
+					$parameterSetter .= "\t\t\$sqlQuery->setNumber($".getVarName($tableName)."->".getVarNameWithS($tab[$j][0]).");\n";
+				}else{
+					$parameterSetter .= "\t\t\$sqlQuery->set($".getVarName($tableName)."->".getVarNameWithS($tab[$j][0]).");\n";
+				}
+				$parameterSetter2 = '';
+				if(isColumnTypeNumber($tab[$j][1])){
+					$parameterSetter2 .= "Number";
+				}
+				$queryByField .= "	public function queryBy".getClazzName($tab[$j][0])."(\$value){
+		\$sql = 'SELECT * FROM ".$tableName." WHERE is_deleted = FALSE AND ".$tab[$j][0]." = ?';
+		\$sqlQuery = new SqlQuery(\$sql);
+		\$sqlQuery->set".$parameterSetter2."(\$value);
+		return \$this->getList(\$sqlQuery);
+	}\n\n";
+				$deleteByField .= "	public function deleteBy".getClazzName($tab[$j][0])."(\$value){
+		\$sql = 'UPDATE ".$tableName." SET is_deleted = TRUE, delete_epoch=unix_timestamp(now()) WHERE ".$tab[$j][0]." = ? AND is_deleted = FALSE';
+		\$sqlQuery = new SqlQuery(\$sql);
+		\$sqlQuery->set".$parameterSetter2."(\$value);
+		return \$this->executeUpdate(\$sqlQuery);
+	}\n\n";
+			}
+			$readRow .= "\t\t\$".getVarName($tableName)."->".getVarNameWithS($tab[$j][0])." = \$row['".$tab[$j][0]."'];\n";
+		}
+		if($pk==''){
+			continue;
+		}
+		if(count($pks)==1){
+			$template = new Template('templates/RestController.tpl');
+			echo '$pk_type '.$pk_type.'<br/>'."\n";
+			if(isColumnTypeNumber($pk_type)){
+				$template->set('pk_number', 'Number');
+			}else{
+				$template->set('pk_number', '');
+			}
+		}else{			
+			Throw new Exception("Cannot have more than one PK"); 
+		}
+		$template->set('dao_clazz_name', $clazzName );
+		$template->set('domain_clazz_name', getDTOName($tableName) );
+		$template->set('idao_clazz_name', getClazzName($tableName));
+		$template->set('table_name', $tableName);
+		$template->set('var_name', getVarName($tableName));
+		
+		$insertFields = substr($insertFields,0, strlen($insertFields)-2);
+		$updateFields = substr($updateFields,0, strlen($updateFields)-2);
+		$questionMarks = substr($questionMarks,0, strlen($questionMarks)-2);
+		$template->set('pk', $pk);
+		$s = '';
+		$s2 = '';
+		$s3 = '';
+		$s4 = '';
+		$insertFields2 = $insertFields;
+		$questionMarks2 = $questionMarks;
+		for($z=0;$z<count($pks);$z++){
+			$questionMarks2.=', ?';			
+			if($z>0){
+				$s.=', ';								
+				$s2.=' AND ';
+				$s3.= "\t\t";
+			}			
+			$insertFields2.=', '.$pks[$z];
+			$s .= '$'.getVarNameWithS($pks[$z]);
+			$s2 .= $pks[$z].' = ? ';
+			$s3 .= '$sqlQuery->setNumber($'.getVarNameWithS($pks[$z]).');';			
+			$s3 .= "\n";
+			$s4 .= "\n\t\t";
+			$s4 .= '$sqlQuery->setNumber($'.getVarName($tableName).'->'.getVarNameWithS($pks[$z]).');';
+			$s4 .= "\n";
+		}
+		if($s[0]==',')$s = substr($s,1);
+		if($questionMarks2[0]==',')$questionMarks2= substr($questionMarks2,1);
+		if($insertFields2[0]==',')$insertFields2= substr($insertFields2,1);
+		$template->set('question_marks2', $questionMarks2);
+		$template->set('insert_fields2', $insertFields2);
+		$template->set('pk_set_update', $s4);
+		$template->set('pk_set', $s3);		
+		$template->set('pk_where', $s2);
+		$template->set('pks', $s);
+		$template->set('pk_php', getVarNameWithS($pk));		
+		$template->set('insert_fields', $insertFields);
+		$template->set('read_row', $readRow);
+		$template->set('update_fields', $updateFields);
+		$template->set('question_marks', $questionMarks);
+		$template->set('parameter_setter',$parameterSetter);
+		$template->set('read_row',$readRow);
+		$template->set('date', date("Y-m-d H:i"));
+		$template->set('queryByFieldFunctions',$queryByField);		
+		$template->set('deleteByFieldFunctions',$deleteByField);	
+		$template->write('generated/class/rest/'.getClazzName($tableName).'Controller.class.php');
+	}
+}
 
 function getnerateDAOObjects($ret){
 	for($i=0;$i<count($ret);$i++){
