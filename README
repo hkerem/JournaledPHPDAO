@@ -15,4 +15,6 @@ Also all tables should have following fields and indexes:
 
 That's all..
 
+How to rest:
+Rest CRUD controllers for DAO objects could be found in generated/class/rest directory. Also these could be registered to RestDAOFacade::register($restserver) .
 
