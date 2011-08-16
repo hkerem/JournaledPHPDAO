@@ -98,7 +98,7 @@ function createRestFacade($ret){
 		}
 		$tableName = $ret[$i][0];
 		$clazzName = getClazzName($tableName);
-		$str .= "\t\t".'$restserver'."->addClass('$clazzName', 'dao');\n";
+		$str .= "\t\t".'$restserver'."->addClass('$clazzName"."Controller', '/dao');\n";
 	}
 	$template = new Template('templates/RestDAOFacade.tpl');
 	$template->set('content', $str);

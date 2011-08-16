@@ -10,8 +10,8 @@ class ${idao_clazz_name}Controller {
 	/**
 	 * Get Domain object by primary key
 	 *
-	 * @noauth
-	 * @url GET /${table_name}/:id
+	 * @noAuth
+	 * @url GET /${table_name}/$id
 	 */
 	public function load($id){
 		$transaction = new Transaction();
@@ -23,8 +23,8 @@ class ${idao_clazz_name}Controller {
 	/**
 	 * Delete Domain object by primary key
 	 *
-	 * @noauth
-	 * @url DELETE /${table_name}/:id
+	 * @noAuth
+	 * @url DELETE /${table_name}/$id
 	 */
 	public function delete($id){
 		$transaction = new Transaction();
@@ -36,9 +36,9 @@ class ${idao_clazz_name}Controller {
 	/**
  	 * Save object to database
  	 *
-	 * @noauth
+	 * @noAuth
 	 * @url POST /${table_name}
-	 * @url PUT /${table_name}/:id
+	 * @url PUT /${table_name}/$id
  	 */
 	public function save($id = null, $object){
 		$transaction = new Transaction();
@@ -55,11 +55,10 @@ class ${idao_clazz_name}Controller {
 	/**
 	 * List domain objects
 	 *
-	 * @noauth
-	 * @url GET /${table_name}/
+	 * @noAuth
 	 * @url GET /${table_name}
 	 */
-	public function list(){
+	public function listAll(){
 		$transaction = new Transaction();
 		$arr = DAOFactory::get${idao_clazz_name}DAO()->queryAll();
 		$transaction->commit();
