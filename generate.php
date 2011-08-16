@@ -59,7 +59,7 @@ function createIncludeFile($ret){
 function doesTableContainPK($row){
 	$row = getFields($row[0]);
 	for($j=0;$j<count($row);$j++){
-		if($row[$j][3]=='PRI'){
+		if($row[$j][3]=='PRI' || $row[$j][0]=='id'){
 			return true;
 		}
 	}
@@ -141,7 +141,7 @@ function getnerateDAOExtObjects($ret){
 		$queryByField = '';
 		$deleteByField = '';
 		for($j=0;$j<count($tab);$j++){
-			if($tab[$j][3]=='PRI'){
+			if($tab[$j][3]=='PRI' || $tab[$j][0]=='id'){
 				$pk = $tab[$j][0];
 			}else{
 				$insertFields .= $tab[$j][0].", ";
@@ -157,13 +157,13 @@ function getnerateDAOExtObjects($ret){
 					$parameterSetter2 .= "Number";
 				}
 				$queryByField .= "	public function queryBy".getClazzName($tab[$j][0])."(\$value){
-		\$sql = 'SELECT * FROM ".$tableName." WHERE ".$tab[$j][0]." = ?';
+		\$sql = 'SELECT * FROM ".$tableName." WHERE is_deleted = FALSE AND ".$tab[$j][0]." = ?';
 		\$sqlQuery = new SqlQuery(\$sql);
 		\$sqlQuery->set".$parameterSetter2."(\$value);
 		return \$this->getList(\$sqlQuery);
 	}\n\n";
 				$deleteByField .= "	public function deleteBy".getClazzName($tab[$j][0])."(\$value){
-		\$sql = 'DELETE FROM ".$tableName." WHERE ".$tab[$j][0]." = ?';
+		\$sql = 'UPDATE ".$tableName." SET is_deleted = TRUE, delete_epoch=unix_timestamp(now()) WHERE ".$tab[$j][0]." = ? AND is_deleted = FALSE';
 		\$sqlQuery = new SqlQuery(\$sql);
 		\$sqlQuery->set".$parameterSetter2."(\$value);
 		return \$this->executeUpdate(\$sqlQuery);
@@ -216,7 +216,7 @@ function getnerateDAOObjects($ret){
 		$deleteByField = '';
 		$pk_type='';
 		for($j=0;$j<count($tab);$j++){
-			if($tab[$j][3]=='PRI'){
+			if($tab[$j][3]=='PRI' || $tab[$j][0]=='id'){
 				$pk = $tab[$j][0];
 				$c = count($pks);
 				$pks[$c] = $tab[$j][0];
@@ -235,13 +235,13 @@ function getnerateDAOObjects($ret){
 					$parameterSetter2 .= "Number";
 				}
 				$queryByField .= "	public function queryBy".getClazzName($tab[$j][0])."(\$value){
-		\$sql = 'SELECT * FROM ".$tableName." WHERE ".$tab[$j][0]." = ?';
+		\$sql = 'SELECT * FROM ".$tableName." WHERE is_deleted = FALSE AND ".$tab[$j][0]." = ?';
 		\$sqlQuery = new SqlQuery(\$sql);
 		\$sqlQuery->set".$parameterSetter2."(\$value);
 		return \$this->getList(\$sqlQuery);
 	}\n\n";
 				$deleteByField .= "	public function deleteBy".getClazzName($tab[$j][0])."(\$value){
-		\$sql = 'DELETE FROM ".$tableName." WHERE ".$tab[$j][0]." = ?';
+		\$sql = 'UPDATE ".$tableName." SET is_deleted = TRUE, delete_epoch=unix_timestamp(now()) WHERE ".$tab[$j][0]." = ? AND is_deleted = FALSE';
 		\$sqlQuery = new SqlQuery(\$sql);
 		\$sqlQuery->set".$parameterSetter2."(\$value);
 		return \$this->executeUpdate(\$sqlQuery);
@@ -254,14 +254,14 @@ function getnerateDAOObjects($ret){
 		}
 		if(count($pks)==1){
 			$template = new Template('templates/DAO.tpl');
-			echo '$pk_type '.$pk_type.'<br/>';
+			echo '$pk_type '.$pk_type.'<br/>'."\n";
 			if(isColumnTypeNumber($pk_type)){
 				$template->set('pk_number', 'Number');
 			}else{
 				$template->set('pk_number', '');
 			}
 		}else{			
-			$template = new Template('templates/DAO_with_complex_pk.tpl');
+			Throw new Exception("Cannot have more than one PK"); 
 		}
 		$template->set('dao_clazz_name', $clazzName );
 		$template->set('domain_clazz_name', getDTOName($tableName) );
@@ -319,7 +319,7 @@ function getnerateDAOObjects($ret){
 }
 
 function isColumnTypeNumber($columnType){
-	echo $columnType.'<br/>';
+	echo $columnType.'<br/>'."\n";
 	if(strtolower(substr($columnType,0,3))=='int' || strtolower(substr($columnType,0,7))=='tinyint'){
 		return true;
 	}
@@ -344,7 +344,7 @@ function getnerateIDAOObjects($ret){
 		$queryByField = '';
 		$deleteByField = '';
 		for($j=0;$j<count($tab);$j++){
-			if($tab[$j][3]=='PRI'){
+			if($tab[$j][3]=='PRI' || $tab[$j][0]=='id'){
 				$pk = $tab[$j][0];
 				$c = count($pks);
 				$pks[$c] = $tab[$j][0];
@@ -369,7 +369,7 @@ function getnerateIDAOObjects($ret){
 		if(count($pks)==1){
 			$template = new Template('templates/IDAO.tpl');
 		}else{			
-			$template = new Template('templates/IDAO_with_complex_pk.tpl');
+			Throw new Exception("Cannot have more than one PK"); 
 		}
 		
 		$template->set('dao_clazz_name', $clazzName );
@@ -425,7 +425,22 @@ function getnerateIDAOObjects($ret){
 
 function getFields($table){
 	$sql = 'DESC '.$table;
-	return QueryExecutor::execute(new SqlQuery($sql));
+	$rettab = array();
+	$r=0;
+	$origtab = QueryExecutor::execute(new SqlQuery($sql));
+	for($i=0;$i<count($origtab);$i++) {
+		$fieldname = $origtab[$i][0];
+		$row = $origtab[$i];
+		switch ($fieldname) {
+			case 'rid': break;
+			case 'is_deleted': break;
+			case 'create_epoch': break;
+			case 'delete_epoch': break;
+			default: $rettab[$r++] = $row; break;
+		}
+	}
+
+	return $rettab;
 }
 
 

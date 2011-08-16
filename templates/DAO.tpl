@@ -14,7 +14,7 @@ class ${dao_clazz_name}DAO implements ${idao_clazz_name}DAO{
 	 * @return ${dao_clazz_name} 
 	 */
 	public function load($id){
-		$sql = 'SELECT * FROM ${table_name} WHERE ${pk} = ?';
+		$sql = 'SELECT * FROM ${table_name} WHERE ${pk} = ? AND is_deleted = FALSE';
 		$sqlQuery = new SqlQuery($sql);
 		$sqlQuery->set${pk_number}($id);
 		return $this->getRow($sqlQuery);
@@ -24,7 +24,7 @@ class ${dao_clazz_name}DAO implements ${idao_clazz_name}DAO{
 	 * Get all records from table
 	 */
 	public function queryAll(){
-		$sql = 'SELECT * FROM ${table_name}';
+		$sql = 'SELECT * FROM ${table_name} WHERE is_deleted = FALSE';
 		$sqlQuery = new SqlQuery($sql);
 		return $this->getList($sqlQuery);
 	}
@@ -35,7 +35,7 @@ class ${dao_clazz_name}DAO implements ${idao_clazz_name}DAO{
 	 * @param $orderColumn column name
 	 */
 	public function queryAllOrderBy($orderColumn){
-		$sql = 'SELECT * FROM ${table_name} ORDER BY '.$orderColumn;
+		$sql = 'SELECT * FROM ${table_name} WHERE is_deleted = FALSE ORDER BY '.$orderColumn;
 		$sqlQuery = new SqlQuery($sql);
 		return $this->getList($sqlQuery);
 	}
@@ -45,7 +45,7 @@ class ${dao_clazz_name}DAO implements ${idao_clazz_name}DAO{
  	 * @param ${var_name} primary key
  	 */
 	public function delete($${pk}){
-		$sql = 'DELETE FROM ${table_name} WHERE ${pk} = ?';
+		$sql = 'UPDATE ${table_name} SET is_deleted = TRUE, delete_epoch=unix_timestamp(now()) WHERE ${pk} = ? AND is_deleted = FALSE';
 		$sqlQuery = new SqlQuery($sql);
 		$sqlQuery->set${pk_number}($${pk});
 		return $this->executeUpdate($sqlQuery);
@@ -57,12 +57,22 @@ class ${dao_clazz_name}DAO implements ${idao_clazz_name}DAO{
  	 * @param ${dao_clazz_name} ${var_name}
  	 */
 	public function insert($${var_name}){
-		$sql = 'INSERT INTO ${table_name} (${insert_fields}) VALUES (${question_marks})';
+		$isql = 'SELECT MAX(${pk}) FROM ${table_name}';
+		$isqlQuery = new SqlQuery($isql);
+		$last_pk = $this->getSingleValue($isqlQuery);
+		if ($last_pk == NULL)
+			$next_pk = 1;
+		else
+			$next_pk = $last_pk + 1;
+
+		$sql = 'INSERT INTO ${table_name} (${pk},${insert_fields},is_deleted,create_epoch) VALUES (?,${question_marks},FALSE,unix_timestamp(now()))';
 		$sqlQuery = new SqlQuery($sql);
+		$sqlQuery->set${pk_number}($next_pk);
 		${parameter_setter}
-		$id = $this->executeInsert($sqlQuery);	
-		$${var_name}->${pk_php} = $id;
-		return $id;
+		$this->executeInsert($sqlQuery);	
+
+		$${var_name}->${pk_php} = $next_pk;
+		return $next_pk;
 	}
 	
 	/**
@@ -71,18 +81,25 @@ class ${dao_clazz_name}DAO implements ${idao_clazz_name}DAO{
  	 * @param ${dao_clazz_name} ${var_name}
  	 */
 	public function update($${var_name}){
-		$sql = 'UPDATE ${table_name} SET ${update_fields} WHERE ${pk} = ?';
+		$usql = 'UPDATE ${table_name} SET is_deleted = TRUE, delete_epoch=unix_timestamp(now()) WHERE ${pk} = ? AND is_deleted = FALSE';
+		$usqlQuery = new SqlQuery($usql);
+		$usqlQuery->set${pk_number}($${var_name}->${pk_php});
+		$ret = $this->executeUpdate($usqlQuery);
+
+		$sql = 'INSERT INTO ${table_name} (${pk},${insert_fields},is_deleted,create_epoch) VALUES (?,${question_marks},FALSE,unix_timestamp(now()))';
 		$sqlQuery = new SqlQuery($sql);
-		${parameter_setter}
 		$sqlQuery->set${pk_number}($${var_name}->${pk_php});
-		return $this->executeUpdate($sqlQuery);
+		${parameter_setter}
+		$this->executeInsert($sqlQuery);	
+
+		return $ret;
 	}
 
 	/**
  	 * Delete all rows
  	 */
 	public function clean(){
-		$sql = 'DELETE FROM ${table_name}';
+		$sql = 'UPDATE ${table_name} SET is_deleted = TRUE WHERE is_deleted = FALSE';
 		$sqlQuery = new SqlQuery($sql);
 		return $this->executeUpdate($sqlQuery);
 	}
@@ -109,6 +126,7 @@ ${deleteByFieldFunctions}
 		}
 		return $ret;
 	}
+
 	
 	/**
 	 * Get row
@@ -119,6 +137,21 @@ ${deleteByFieldFunctions}
 		$tab = QueryExecutor::execute($sqlQuery);
 		if(count($tab)==0){
 			return null;
+		}
+		return $this->readRow($tab[0]);		
+	}
+
+	/**
+	 * Get single value
+	 *
+	 * @return ${dao_clazz_name} 
+	 */
+	protected function getSingleValue($sqlQuery){
+		$tab = QueryExecutor::execute($sqlQuery);
+		if(count($tab)==1 && count($tab[0])==2){
+			return $tab[0][0];
+		} else {
+			Throw new Exception("Should return one row with one field, Anything else is forbidden!");
 		}
 		return $this->readRow($tab[0]);		
 	}

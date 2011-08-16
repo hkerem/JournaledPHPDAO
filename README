@@ -1,0 +1,18 @@
+
+Journaled PHP DAO
+=================================================
+
+Restrictions:
+Tables only can have one primary key whose name should be 'id' and type should be 'unsigned integer'.
+Also all tables should have following fields and indexes:
+	  `rid` int(10) unsigned NOT NULL AUTO_INCREMENT,
+	  `id` int(10) unsigned NOT NULL,
+	  `is_deleted` tinyint(1) NOT NULL,
+	  `create_epoch` int(10) unsigned NOT NULL,
+	  `delete_epoch` int(10) unsigned DEFAULT NULL,
+	  PRIMARY KEY (`rid`),
+	  KEY `id` (`id`)
+
+That's all..
+
+
