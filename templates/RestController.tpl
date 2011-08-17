@@ -40,16 +40,16 @@ class ${idao_clazz_name}Controller {
 	 * @url POST /${table_name}
 	 * @url PUT /${table_name}/$id
  	 */
-	public function save($id = null, $object){
+	public function save($id = null, $data){
 		$transaction = new Transaction();
 		if ($id == null) {
-			DAOFactory::get${idao_clazz_name}DAO()->insert($object);
+			DAOFactory::get${idao_clazz_name}DAO()->insert($data);
 		} else {
-			$object->id = $id;
-			DAOFactory::get${idao_clazz_name}DAO()->update($object);
+			$data->id = $id;
+			DAOFactory::get${idao_clazz_name}DAO()->update($data);
 		}
 		$transaction->commit();
-		return $object;
+		return $data;
 	}
 
 	/**
