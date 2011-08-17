@@ -1,6 +1,6 @@
 <?php
 /**
- * Rest controller class for  '${table_name}' DAO.
+ * Rest controller class for  '${idao_clazz_name}' DAO.
  *
  * @author: http://github.com/hkerem/JournaledPHPDAO
  * @date: ${date}
@@ -11,7 +11,7 @@ class ${idao_clazz_name}Controller {
 	 * Get Domain object by primary key
 	 *
 	 * @noAuth
-	 * @url GET /${table_name}/$id
+	 * @url GET /${idao_clazz_name}/$id
 	 */
 	public function load($id){
 		$transaction = new Transaction();
@@ -24,7 +24,7 @@ class ${idao_clazz_name}Controller {
 	 * Delete Domain object by primary key
 	 *
 	 * @noAuth
-	 * @url DELETE /${table_name}/$id
+	 * @url DELETE /${idao_clazz_name}/$id
 	 */
 	public function delete($id){
 		$transaction = new Transaction();
@@ -37,8 +37,8 @@ class ${idao_clazz_name}Controller {
  	 * Save object to database
  	 *
 	 * @noAuth
-	 * @url POST /${table_name}
-	 * @url PUT /${table_name}/$id
+	 * @url POST /${idao_clazz_name}
+	 * @url PUT /${idao_clazz_name}/$id
  	 */
 	public function save($id = null, $data){
 		$transaction = new Transaction();
@@ -56,7 +56,7 @@ class ${idao_clazz_name}Controller {
 	 * List domain objects
 	 *
 	 * @noAuth
-	 * @url GET /${table_name}
+	 * @url GET /${idao_clazz_name}
 	 */
 	public function listAll(){
 		$transaction = new Transaction();

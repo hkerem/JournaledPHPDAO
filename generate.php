@@ -254,7 +254,7 @@ function getnerateRestControllers($ret){
 				if(isColumnTypeNumber($tab[$j][1])){
 					$parameterSetter2 .= "Number";
 				}
-				$queryByFieldControls .= 'if (isset($_REQUEST["'.$tab[$j][0].'"])) $arr = DAOFactory::get'.getClazzName($tableName).'DAO()->queryBy'.getClazzName($tab[$j][0]).'($_REQUEST["'.$tab[$j][0].'"]);
+				$queryByFieldControls .= 'if (isset($_GET["'.getVarNameWithS($tab[$j][0]).'"])) $arr = DAOFactory::get'.getClazzName($tableName).'DAO()->queryBy'.getClazzName($tab[$j][0]).'($_GET["'.getVarNameWithS($tab[$j][0]).'"]);
 		else ';
 			}
 			$readRow .= "\t\t\$".getVarName($tableName)."->".getVarNameWithS($tab[$j][0])." = \$row['".$tab[$j][0]."'];\n";
