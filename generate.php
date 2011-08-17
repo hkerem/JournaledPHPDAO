@@ -232,6 +232,7 @@ function getnerateRestControllers($ret){
 		$pk = '';
 		$pks = array();
 		$queryByField = '';
+		$queryByFieldControls = '';
 		$deleteByField = '';
 		$pk_type='';
 		for($j=0;$j<count($tab);$j++){
@@ -253,18 +254,8 @@ function getnerateRestControllers($ret){
 				if(isColumnTypeNumber($tab[$j][1])){
 					$parameterSetter2 .= "Number";
 				}
-				$queryByField .= "	public function queryBy".getClazzName($tab[$j][0])."(\$value){
-		\$sql = 'SELECT * FROM ".$tableName." WHERE is_deleted = FALSE AND ".$tab[$j][0]." = ?';
-		\$sqlQuery = new SqlQuery(\$sql);
-		\$sqlQuery->set".$parameterSetter2."(\$value);
-		return \$this->getList(\$sqlQuery);
-	}\n\n";
-				$deleteByField .= "	public function deleteBy".getClazzName($tab[$j][0])."(\$value){
-		\$sql = 'UPDATE ".$tableName." SET is_deleted = TRUE, delete_epoch=unix_timestamp(now()) WHERE ".$tab[$j][0]." = ? AND is_deleted = FALSE';
-		\$sqlQuery = new SqlQuery(\$sql);
-		\$sqlQuery->set".$parameterSetter2."(\$value);
-		return \$this->executeUpdate(\$sqlQuery);
-	}\n\n";
+				$queryByFieldControls .= 'if (isset($_REQUEST["'.$tab[$j][0].'"])) $arr = DAOFactory::get'.getClazzName($tableName).'DAO()->queryBy'.getClazzName($tab[$j][0]).'($_REQUEST["'.$tab[$j][0].'"]);
+		else ';
 			}
 			$readRow .= "\t\t\$".getVarName($tableName)."->".getVarNameWithS($tab[$j][0])." = \$row['".$tab[$j][0]."'];\n";
 		}
@@ -331,8 +322,7 @@ function getnerateRestControllers($ret){
 		$template->set('parameter_setter',$parameterSetter);
 		$template->set('read_row',$readRow);
 		$template->set('date', date("Y-m-d H:i"));
-		$template->set('queryByFieldFunctions',$queryByField);		
-		$template->set('deleteByFieldFunctions',$deleteByField);	
+		$template->set('queryByFieldControls',$queryByFieldControls);		
 		$template->write('generated/class/rest/'.getClazzName($tableName).'Controller.class.php');
 	}
 }

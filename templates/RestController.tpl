@@ -60,7 +60,7 @@ class ${idao_clazz_name}Controller {
 	 */
 	public function listAll(){
 		$transaction = new Transaction();
-		$arr = DAOFactory::get${idao_clazz_name}DAO()->queryAll();
+		${queryByFieldControls}$arr = DAOFactory::get${idao_clazz_name}DAO()->queryAll();
 		$transaction->commit();
 		return $arr;
 	}
